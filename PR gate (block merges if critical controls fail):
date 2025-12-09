@@ -1,0 +1,19 @@
+# .github/workflows/pr-gate.yml
+name: Compliance Gate
+
+on:
+  pull_request:
+
+jobs:
+  compliance-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python src/evaluators/control_engine.py > compliance_results.json
+      - name: Fail on critical control failures
+        run: |
+          python scripts/fail_on_critical.py compliance_results.json
