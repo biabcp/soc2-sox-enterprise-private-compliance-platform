@@ -1,0 +1,35 @@
+# controls/soc2/cc6_1.yml
+id: "SOC2-CC6.1"
+name: "Logical Access Controls"
+framework: "SOC2"
+trust_service_criteria:
+  - "Security"
+description: >
+  The entity implements logical access security software,
+  infrastructure, and architectures over protected information assets
+  to protect them from security events.
+owner: "Security Engineering"
+evidence_sources:
+  - "github.branch_protection"
+  - "idp.mfa_enforcement"
+  - "cloud.iam_policies"
+evaluation:
+  frequency: "daily"
+  rules:
+    - id: "branch_protection_required"
+      description: "All main branches must require PR review + status checks."
+      type: "query"
+      source: "github.branch_protection"
+      condition: "all_repos_enforced == true"
+      severity: "high"
+    - id: "mfa_enforced"
+      description: "MFA must be enabled for all human users in IdP."
+      type: "query"
+      source: "idp.mfa_enforcement"
+      condition: "percentage_mfa_enabled >= 0.98"
+      severity: "critical"
+tags:
+  - "access_control"
+  - "identity"
+related_controls:
+  - "SOX-ITGC-ACCESS"
