@@ -1,0 +1,50 @@
+# src/collectors/github_collector.py
+import os
+import json
+from datetime import datetime
+
+from github import Github  # from PyGithub
+
+OUTPUT_DIR = "evidence/raw/github"
+
+def get_client():
+    token = os.getenv("GITHUB_TOKEN")
+    if not token:
+        raise RuntimeError("GITHUB_TOKEN not set")
+    return Github(token)
+
+def collect_branch_protection(org_name: str):
+    gh = get_client()
+    org = gh.get_organization(org_name)
+
+    data = []
+    for repo in org.get_repos():
+        try:
+            branch = repo.get_branch("main")
+        except Exception:
+            # no main branch or no access
+            continue
+
+        bp = branch.protection
+        data.append({
+            "repo": repo.full_name,
+            "required_status_checks": bool(bp.required_status_checks),
+            "required_approving_review_count": getattr(
+                bp.required_pull_request_reviews, "required_approving_review_count", 0
+            ),
+            "enforce_admins": bool(bp.enforce_admins),
+        })
+
+    timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H%M%SZ")
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    out_path = os.path.join(OUTPUT_DIR, f"branch_protection_{timestamp}.json")
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+    print(f"Wrote {out_path}")
+
+
+if __name__ == "__main__":
+    org_name = os.getenv("GITHUB_ORG", "example-org")
+    collect_branch_protection(org_name)
