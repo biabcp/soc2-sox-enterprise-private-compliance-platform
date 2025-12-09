@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-12-08T03:00:00Z",
+  "summary": {
+    "total_controls": 42,
+    "pass": 34,
+    "fail": 6,
+    "needs_review": 2
+  },
+  "controls": [
+    {
+      "id": "SOC2-CC6.1",
+      "status": "fail",
+      "failed_rules": ["mfa_enforced"],
+      "owner": "Security Engineering"
+    }
+  ]
+}
