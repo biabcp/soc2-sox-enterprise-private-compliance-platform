@@ -1,0 +1,54 @@
+# src/evaluators/control_engine.py
+import glob
+import yaml
+import json
+from typing import Dict, Any
+
+def load_controls() -> list[Dict[str, Any]]:
+    controls = []
+    for path in glob.glob("controls/**/*.yml", recursive=True):
+        with open(path, "r", encoding="utf-8") as f:
+            controls.append(yaml.safe_load(f))
+    return controls
+
+def load_latest_evidence() -> Dict[str, Any]:
+    # For v1, you can simplify:
+    # one JSON file per evidence type with a stable name
+    with open("evidence/processed/github_branch_protection.json") as f:
+        github_bp = json.load(f)
+    with open("evidence/processed/idp_mfa.json") as f:
+        idp_mfa = json.load(f)
+    return {
+        "github.branch_protection": github_bp,
+        "idp.mfa_enforcement": idp_mfa,
+    }
+
+def evaluate_controls():
+    controls = load_controls()
+    evidence = load_latest_evidence()
+    results = []
+
+    for c in controls:
+        failed_rules = []
+        for rule in c.get("evaluation", {}).get("rules", []):
+            source = evidence.get(rule["source"])
+            # TODO: implement real condition evaluation
+            ok = dummy_condition_eval(rule, source)
+            if not ok:
+                failed_rules.append(rule["id"])
+
+        status = "pass" if not failed_rules else "fail"
+        results.append({
+            "id": c["id"],
+            "status": status,
+            "failed_rules": failed_rules,
+            "owner": c.get("owner"),
+        })
+    return results
+
+def dummy_condition_eval(rule, source) -> bool:
+    # stub for now; replace with real query language or Python expressions
+    return True
+
+if __name__ == "__main__":
+    print(json.dumps(evaluate_controls(), indent=2))
