@@ -2,6 +2,8 @@ import json
 import sys
 from pathlib import Path
 
+BLOCKING_SEVERITIES = {"critical", "unknown"}
+
 
 def _read_controls(path: Path) -> list[dict]:
     with path.open("r", encoding="utf-8") as fh:
@@ -27,7 +29,7 @@ def main() -> int:
         if control.get("status") != "fail":
             continue
         for failed_rule in control.get("failed_rule_details", []):
-            if failed_rule.get("severity") == "critical":
+            if failed_rule.get("severity") in BLOCKING_SEVERITIES:
                 critical_failures.append((control.get("id", "unknown_control"), failed_rule.get("id", "unknown_rule")))
 
     if critical_failures:

@@ -1,7 +1,14 @@
 import json
 from pathlib import Path
 
-from src.evaluators.control_engine import dummy_condition_eval, evaluate_controls, load_controls
+from src.evaluators.control_engine import (
+    _coerce_value,
+    _latest_json_file,
+    dummy_condition_eval,
+    evaluate_controls,
+    load_controls,
+    load_latest_evidence,
+)
 
 
 def test_dummy_condition_eval_numeric_and_boolean():
@@ -59,3 +66,50 @@ def test_load_controls_supports_yaml_extension(tmp_path: Path):
 
 def test_dummy_condition_eval_type_mismatch_returns_false():
     assert not dummy_condition_eval({"condition": "mfa >= 1"}, {"mfa": "enabled"})
+
+
+def test_coerce_value_supports_common_boolean_representations():
+    assert _coerce_value("True") is True
+    assert _coerce_value("yes") is True
+    assert _coerce_value("No") is False
+    assert _coerce_value("0.98") == 0.98
+    assert _coerce_value("100") == 100
+
+
+def test_dummy_condition_eval_supports_contains_in_exists():
+    data = {"scopes": ["repo", "admin:org"], "actor": "security-bot", "mfa": True}
+    assert dummy_condition_eval({"condition": "scopes contains 'repo'"}, data)
+    assert dummy_condition_eval({"condition": "actor in ['security-bot', 'renovate[bot]']"}, data)
+    assert dummy_condition_eval({"condition": "mfa exists"}, data)
+
+
+def test_dummy_condition_eval_unsupported_operator_raises():
+    try:
+        dummy_condition_eval({"condition": "mfa ~~ true"}, {"mfa": True})
+    except ValueError as exc:
+        assert "Unsupported condition operator" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for unsupported operator")
+
+
+def test_latest_json_file_prefers_embedded_date_over_mtime(tmp_path: Path):
+    old_named_newly_touched = tmp_path / "idp_mfa_2026-01-01.json"
+    new_named_older_mtime = tmp_path / "idp_mfa_2026-03-01.json"
+    old_named_newly_touched.write_text("{}", encoding="utf-8")
+    new_named_older_mtime.write_text("{}", encoding="utf-8")
+
+    old_named_newly_touched.touch()
+    assert _latest_json_file(str(tmp_path / "idp_mfa*.json")) == new_named_older_mtime
+
+
+def test_load_latest_evidence_includes_missing_sources_as_none(tmp_path: Path):
+    processed = tmp_path / "evidence" / "processed"
+    processed.mkdir(parents=True)
+    (processed / "idp_mfa_2026-01-01.json").write_text(
+        json.dumps({"percentage_mfa_enabled": 1.0}),
+        encoding="utf-8",
+    )
+
+    loaded = load_latest_evidence(str(processed))
+    assert loaded["idp.mfa_enforcement"]["percentage_mfa_enabled"] == 1.0
+    assert loaded["github.branch_protection"] is None
