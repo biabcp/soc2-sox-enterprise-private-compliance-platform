@@ -45,6 +45,7 @@ def test_evaluate_controls_finds_failures(tmp_path: Path, monkeypatch):
     assert results[0]["status"] == "fail"
     assert results[0]["failed_rules"] == ["mfa_enforced"]
     assert results[0]["failed_rule_details"][0]["severity"] == "critical"
+    assert results[0]["data_error_rules"] == []
 
 
 def test_load_controls_supports_yaml_extension(tmp_path: Path):
@@ -83,6 +84,11 @@ def test_dummy_condition_eval_supports_contains_in_exists():
     assert dummy_condition_eval({"condition": "mfa exists"}, data)
 
 
+def test_coerce_value_list_parsing_preserves_quoted_commas():
+    value = _coerce_value('["CN=User,OU=Dev", "admin"]')
+    assert value == ["CN=User,OU=Dev", "admin"]
+
+
 def test_dummy_condition_eval_unsupported_operator_raises():
     try:
         dummy_condition_eval({"condition": "mfa ~~ true"}, {"mfa": True})
@@ -113,3 +119,43 @@ def test_load_latest_evidence_includes_missing_sources_as_none(tmp_path: Path):
     loaded = load_latest_evidence(str(processed))
     assert loaded["idp.mfa_enforcement"]["percentage_mfa_enabled"] == 1.0
     assert loaded["github.branch_protection"] is None
+
+
+def test_evaluate_controls_marks_missing_evidence_as_data_error(tmp_path: Path, monkeypatch):
+    controls_dir = tmp_path / "controls" / "soc2"
+    controls_dir.mkdir(parents=True)
+    (controls_dir / "cc6_1.yml").write_text(
+        "\n".join([
+            'id: "SOC2-CC6.1"',
+            'owner: "Security Engineering"',
+            'evaluation:',
+            '  rules:',
+            '    - id: "mfa_enforced"',
+            '      source: "idp.mfa_enforcement"',
+            '      condition: "percentage_mfa_enabled >= 0.98"',
+            '      severity: "critical"',
+        ]),
+        encoding="utf-8",
+    )
+
+    monkeypatch.chdir(tmp_path)
+    results = evaluate_controls()
+    assert results[0]["status"] == "data_error"
+    assert results[0]["data_error_rules"] == ["mfa_enforced"]
+
+
+def test_load_controls_supports_yaml_flow_style(tmp_path: Path):
+    controls_dir = tmp_path / "controls" / "soc2"
+    controls_dir.mkdir(parents=True)
+    (controls_dir / "cc6_9.yaml").write_text(
+        "\n".join([
+            'id: "SOC2-CC6.9"',
+            'owner: "Security Engineering"',
+            "evaluation:",
+            '  rules: [{id: "rule1", source: "idp.mfa_enforcement", condition: "mfa == true", severity: "high"}]',
+        ]),
+        encoding="utf-8",
+    )
+
+    controls = load_controls(str(tmp_path / "controls"))
+    assert controls[0]["evaluation"]["rules"][0]["id"] == "rule1"
