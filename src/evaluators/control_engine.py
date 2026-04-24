@@ -1,4 +1,5 @@
 import glob
+import csv
 import json
 import logging
 import os
@@ -42,8 +43,17 @@ def _parse_simple_control_yaml(text: str) -> dict[str, Any]:
         if stripped.startswith("owner:"):
             control["owner"] = _strip_quotes(stripped.split(":", 1)[1])
             continue
-        if stripped == "rules:":
+        if stripped.startswith("rules:"):
             in_rules = True
+            inline = stripped.split(":", 1)[1].strip()
+            if inline.startswith("[") and inline.endswith("]"):
+                normalized = re.sub(r'([{\s,])([A-Za-z_][A-Za-z0-9_-]*)\s*:', r'\1"\2":', inline)
+                try:
+                    parsed = json.loads(normalized)
+                except json.JSONDecodeError:
+                    parsed = []
+                if isinstance(parsed, list):
+                    control["evaluation"]["rules"].extend([rule for rule in parsed if isinstance(rule, dict)])
             continue
 
         if in_rules and stripped.startswith("- "):
@@ -137,7 +147,8 @@ def _coerce_value(raw: str) -> Any:
         inner = value[1:-1].strip()
         if not inner:
             return []
-        return [_coerce_value(item.strip()) for item in inner.split(",")]
+        row = next(csv.reader([inner], skipinitialspace=True), [])
+        return [_coerce_value(item.strip()) for item in row]
     if value.startswith(('"', "'")) and value.endswith(('"', "'")):
         return value[1:-1]
     try:
@@ -231,8 +242,18 @@ def evaluate_controls() -> list[dict[str, Any]]:
 
     for c in controls:
         failures: list[RuleFailure] = []
+        data_errors: list[str] = []
         for rule in c.get("evaluation", {}).get("rules", []):
             source = evidence.get(rule.get("source", ""))
+            if source is None:
+                data_errors.append(rule.get("id", "unknown_rule"))
+                failures.append(
+                    RuleFailure(
+                        id=rule.get("id", "unknown_rule"),
+                        severity=rule.get("severity", "unknown"),
+                    )
+                )
+                continue
             try:
                 passed = dummy_condition_eval(rule, source)
             except ValueError as exc:
@@ -251,12 +272,17 @@ def evaluate_controls() -> list[dict[str, Any]]:
                     )
                 )
 
+        status = "pass"
+        if failures:
+            status = "data_error" if len(data_errors) == len(failures) else "fail"
+
         results.append(
             {
                 "id": c.get("id", "unknown_control"),
-                "status": "pass" if not failures else "fail",
+                "status": status,
                 "failed_rules": [failure.id for failure in failures],
                 "failed_rule_details": [failure.__dict__ for failure in failures],
+                "data_error_rules": data_errors,
                 "owner": c.get("owner"),
             }
         )

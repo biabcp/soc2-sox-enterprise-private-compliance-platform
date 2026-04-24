@@ -19,10 +19,11 @@ def collect_branch_protection(org_name: str):
 
     data = []
     for repo in org.get_repos():
+        branch_name = repo.default_branch or "main"
         try:
-            branch = repo.get_branch("main")
-        except Exception:
-            # no main branch or no access
+            branch = repo.get_branch(branch_name)
+        except Exception as exc:
+            print(f"Skipping {repo.full_name} ({branch_name}): {exc}")
             continue
 
         bp = branch.protection
