@@ -61,7 +61,9 @@ def _parse_simple_control_yaml(text: str) -> dict[str, Any]:
 
 def load_controls(base_dir: str = "controls") -> list[dict[str, Any]]:
     controls: list[dict[str, Any]] = []
-    for path in glob.glob(f"{base_dir}/**/*.yml", recursive=True):
+    patterns = (f"{base_dir}/**/*.yml", f"{base_dir}/**/*.yaml")
+    paths = [path for pattern in patterns for path in glob.glob(pattern, recursive=True)]
+    for path in sorted(set(paths)):
         with open(path, "r", encoding="utf-8") as f:
             doc = _parse_simple_control_yaml(f.read())
         if doc:
@@ -134,18 +136,21 @@ def dummy_condition_eval(rule: dict[str, Any], source: Any) -> bool:
     if current is None:
         return False
 
-    if op == "==":
-        return current == target
-    if op == "!=":
-        return current != target
-    if op == ">=":
-        return current >= target
-    if op == "<=":
-        return current <= target
-    if op == ">":
-        return current > target
-    if op == "<":
-        return current < target
+    try:
+        if op == "==":
+            return current == target
+        if op == "!=":
+            return current != target
+        if op == ">=":
+            return current >= target
+        if op == "<=":
+            return current <= target
+        if op == ">":
+            return current > target
+        if op == "<":
+            return current < target
+    except TypeError:
+        return False
     return False
 
 
