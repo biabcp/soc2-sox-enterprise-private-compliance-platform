@@ -1,0 +1,1 @@
+export default function Page(){return <div className='space-y-3'><h2 className='text-2xl font-semibold'>AUDIT-TRAIL Module</h2><div className='card'>Production-style readiness view with synthetic demo-safe data, KPI summaries, and action tracking for audit-trail.</div></div>}
