@@ -1,0 +1,14 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "sqlite" url = "file:./dev.db" }
+model User { id String @id @default(cuid()) name String role String controls Control[] evidences Evidence[] risks Risk[] remediations Remediation[] }
+model Department { id String @id @default(cuid()) name String }
+model Framework { id String @id @default(cuid()) name String controls Control[] }
+model Control { id String @id name String description String frameworkId String framework Framework @relation(fields:[frameworkId],references:[id]) ownerId String? owner User? @relation(fields:[ownerId],references:[id]) status String maturity Int mappings ControlMapping[] evidences Evidence[] risks Risk[] remediations Remediation[] }
+model ControlMapping { id String @id @default(cuid()) controlId String control Control @relation(fields:[controlId],references:[id]) mappedFramework String }
+model Evidence { id String @id name String controlId String control Control @relation(fields:[controlId],references:[id]) ownerId String? owner User? @relation(fields:[ownerId],references:[id]) status String }
+model SystemAsset { id String @id @default(cuid()) name String type String risks Risk[] }
+model Risk { id String @id title String controlId String? control Control? @relation(fields:[controlId],references:[id]) assetId String? asset SystemAsset? @relation(fields:[assetId],references:[id]) ownerId String? owner User? @relation(fields:[ownerId],references:[id]) likelihood Int impact Int residual Int status String remediations Remediation[] }
+model Remediation { id String @id title String controlId String? control Control? @relation(fields:[controlId],references:[id]) riskId String? risk Risk? @relation(fields:[riskId],references:[id]) ownerId String? owner User? @relation(fields:[ownerId],references:[id]) status String dueDate DateTime? }
+model AuditEvent { id String @id timestamp DateTime @default(now()) user String action String objectType String objectId String oldValue String? newValue String? notes String? }
+model Milestone { id String @id @default(cuid()) name String dueDate DateTime status String }
+model Report { id String @id @default(cuid()) name String payload String createdAt DateTime @default(now()) }

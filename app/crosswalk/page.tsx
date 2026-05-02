@@ -1,0 +1,2 @@
+import { controls } from '@/lib/data';
+export default function P(){return <div className='space-y-3'><h2 className='text-2xl font-semibold'>Control Crosswalk</h2><div className='card'>Reusable evidence opportunities are highlighted where controls map to multiple frameworks.</div><div className='card'>{controls.slice(0,20).map(c=><div key={c.id} className='border-b py-1'>{c.id} {c.name} → SOC 2 / HIPAA / PCI DSS / NIST RMF / NIST 800-53</div>)}</div><a href='/api/export/crosswalk' className='text-blue-600'>Export CSV</a></div>}

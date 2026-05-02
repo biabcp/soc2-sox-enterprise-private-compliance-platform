@@ -1,0 +1,3 @@
+import Link from 'next/link';
+const links=['dashboard','controls','crosswalk','evidence','risks','remediation','rmf','soc2','hipaa','pci','reports','audit-trail','settings','about'];
+export function Shell({children}:{children:React.ReactNode}){return <div className='min-h-screen flex'><aside className='w-60 bg-white border-r p-4'><h1 className='font-bold mb-4'>Compliance Readiness Command Center</h1><nav className='space-y-2'>{links.map(l=><Link className='block text-sm text-slate-700 hover:text-black' key={l} href={`/${l}`}>{l}</Link>)}</nav></aside><main className='flex-1 p-6'>{children}</main></div>}

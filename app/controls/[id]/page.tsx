@@ -1,0 +1,2 @@
+import { controls } from '@/lib/data';
+export default function P({params}:{params:{id:string}}){const c=controls.find(x=>x.id===params.id); if(!c) return <div>Not found</div>; return <div className='space-y-2'><h2 className='text-2xl'>{c.name}</h2><div className='card'>Control ID: {c.id}<br/>Framework: {c.framework}<br/>Domain: {c.domain}<br/>Implementation: {c.status}<br/>Mapped frameworks: SOC 2, HIPAA, PCI DSS, NIST RMF, NIST 800-53</div></div>}
